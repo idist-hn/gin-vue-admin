@@ -1,18 +1,4 @@
-const install = (Vue) => {
-    const Bus = new Vue({
-        methods: {
-            emit(event, ...args) {
-                this.$emit(event, ...args)
-            },
-            on(event, cb) {
-                this.$on(event, cb)
-            },
-            off(event, cb) {
-                this.$off(event, cb)
-            }
-        },
-    })
-    Vue.prototype.$bus = Bus
-}
+// using ES6 modules
+import mitt from 'mitt'
 
-export default install
+export const emitter = mitt()

@@ -1,335 +1,118 @@
 <template>
-  <el-container class="layout-cont">
-    <el-container :class="[isSider?'openside':'hideside',isMobile ? 'mobile': '']">
-      <el-row :class="[isShadowBg?'shadowBg':'']" @click.native="changeShadow()"></el-row>
-      <el-aside class="main-cont main-left">
-        <div class="tilte">
-          <img alt class="logoimg" src="~@/assets/nav_logo.png" />
-          <h2 class="tit-text" v-if="isSider">Gin-Vue-Admin</h2>
+  <div
+    class="bg-gray-50 text-slate-700 dark:text-slate-500 dark:bg-slate-800 w-screen h-screen"
+  >
+    <el-watermark
+      v-if="config.show_watermark"
+      :font="font"
+      :z-index="9999"
+      :gap="[180, 150]"
+      class="!absolute !inset-0 !pointer-events-none"
+      :content="userStore.userInfo.nickName"
+    />
+    <gva-header />
+    <div class="flex flex-row w-full gva-container pt-16 box-border !h-full">
+      <gva-aside
+        v-if="
+          config.side_mode === 'normal' ||
+          config.side_mode === 'sidebar' ||
+          (device === 'mobile' && config.side_mode == 'head') ||
+          (device === 'mobile' && config.side_mode == 'combination')
+        "
+      />
+      <gva-aside
+        v-if="config.side_mode === 'combination' && device !== 'mobile'"
+        mode="normal"
+      />
+      <div class="flex-1 w-0 h-full">
+        <gva-tabs v-if="config.showTabs" />
+        <div
+          class="overflow-auto px-2"
+          :class="config.showTabs ? 'gva-container2' : 'gva-container pt-1'"
+        >
+          <router-view v-if="reloadFlag" v-slot="{ Component, route }">
+            <div
+              id="gva-base-load-dom"
+              class="gva-body-h bg-gray-50 dark:bg-slate-800"
+            >
+              <transition
+                mode="out-in"
+                :name="route.meta.transitionType || config.transition_type"
+              >
+                <keep-alive :include="routerStore.keepAliveRouters">
+                  <component :is="Component" :key="route.fullPath" />
+                </keep-alive>
+              </transition>
+            </div>
+          </router-view>
+          <BottomInfo />
         </div>
-        <Aside class="aside" />
-      </el-aside>
-      <!-- 分块滑动功能 -->
-      <el-main class="main-cont main-right">
-        <transition :duration="{ enter: 800, leave: 100 }" mode="out-in" name="el-fade-in-linear">
-          <div
-            :style="{width: `calc(100% - ${isMobile?'0px':isCollapse?'54px':'220px'})`}"
-            class="topfix"
-          >
-          <el-row>
-            <!-- :xs="8" :sm="6" :md="4" :lg="3" :xl="1" -->
-            <el-header class="header-cont">
-               <el-col :xs="2" :lg="1" :md="1" :sm="1" :xl="1">
-                  <div @click="totalCollapse" class="menu-total">
-                    <i class="el-icon-s-unfold" v-if="isCollapse"></i>
-                    <i class="el-icon-s-fold" v-else></i>
-                  </div>
-                </el-col>
-              <el-col :xs="10" :lg="14" :md='14' :sm="9" :xl="14">
-                 <el-breadcrumb class="breadcrumb" separator-class="el-icon-arrow-right">
-                  <el-breadcrumb-item
-                    :key="item.path"
-                    v-for="item in matched.slice(1,matched.length)"
-                  >{{item.meta.title}}</el-breadcrumb-item>
-                </el-breadcrumb>
-              </el-col>
-               <el-col :xs="12" :lg="9" :md="9" :sm="14" :xl="9">
-                 <div class="fl-right right-box">
-                <Search />
-                <Screenfull class="screenfull"></Screenfull>
-                <el-dropdown>
-                  <span class="header-avatar">
-                   <CustomPic/>
-                    <span style="margin-left: 5px">{{userInfo.nickName}}</span>
-                    <i class="el-icon-arrow-down"></i>
-                  </span>
-                  <el-dropdown-menu class="dropdown-group" slot="dropdown">
-                    <el-dropdown-item>
-                      <span>
-                        更多信息
-                        <el-badge is-dot />
-                      </span>
-                    </el-dropdown-item>
-                    <el-dropdown-item @click.native="toPerson" icon="el-icon-s-custom">个人信息</el-dropdown-item>
-                    <el-dropdown-item @click.native="LoginOut" icon="el-icon-table-lamp">登 出</el-dropdown-item>
-                  </el-dropdown-menu>
-                </el-dropdown>
-              </div>
-               </el-col>
-
-            </el-header>
-          </el-row>
-            <!-- 当前面包屑用路由自动生成可根据需求修改 -->
-            <!--
-            :to="{ path: item.path }" 暂时注释不用-->
-            <HistoryComponent />
-          </div>
-        </transition>
-        <transition mode="out-in" name="el-fade-in-linear">
-          <keep-alive>
-            <router-view  v-loading="loadingFlag"  element-loading-text="正在加载中" class="admin-box" v-if="$route.meta.keepAlive"></router-view>
-          </keep-alive>
-        </transition>
-        <transition mode="out-in" name="el-fade-in-linear">
-          <router-view  v-loading="loadingFlag"  element-loading-text="正在加载中" class="admin-box" v-if="!$route.meta.keepAlive"></router-view>
-        </transition>
-       <BottomInfo />
-      </el-main>
-    </el-container>
-   
-  </el-container>
+      </div>
+    </div>
+  </div>
 </template>
 
-<script>
-import Aside from '@/view/layout/aside'
-import HistoryComponent from '@/view/layout/aside/historyComponent/history'
-import Screenfull from '@/view/layout/screenfull'
-import Search from '@/view/layout/search/search'
-import BottomInfo from '@/view/layout/bottomInfo/bottomInfo'
-import { mapGetters, mapActions } from 'vuex'
-import CustomPic from '@/components/customPic'
-export default {
-  name: 'Layout',
-  data() {
-    return {
-      show: false,
-      isCollapse: false,
-      isSider: true,
-      isMobile: false,
-      isShadowBg: false,
-      loadingFlag:false,
-      
-      value: ''
+<script setup>
+  import GvaAside from '@/view/layout/aside/index.vue'
+  import GvaHeader from '@/view/layout/header/index.vue'
+  import useResponsive from '@/hooks/responsive'
+  import GvaTabs from './tabs/index.vue'
+  import BottomInfo from '@/components/bottomInfo/bottomInfo.vue'
+  import { emitter } from '@/utils/bus.js'
+  import { ref, onMounted, nextTick, reactive, watchEffect } from 'vue'
+  import { useRouter, useRoute } from 'vue-router'
+  import { useRouterStore } from '@/pinia/modules/router'
+  import { useUserStore } from '@/pinia/modules/user'
+  import { useAppStore } from '@/pinia'
+  import { storeToRefs } from 'pinia'
+  import '@/style/transition.scss'
+  const appStore = useAppStore()
+  const { config, isDark, device } = storeToRefs(appStore)
+
+  defineOptions({
+    name: 'GvaLayout'
+  })
+
+  useResponsive(true)
+  const font = reactive({
+    color: 'rgba(0, 0, 0, .15)'
+  })
+
+  watchEffect(() => {
+    font.color = isDark.value ? 'rgba(255,255,255, .15)' : 'rgba(0, 0, 0, .15)'
+  })
+
+  const router = useRouter()
+  const route = useRoute()
+  const routerStore = useRouterStore()
+
+  onMounted(() => {
+    // 挂载一些通用的事件
+    emitter.on('reload', reload)
+    if (userStore.loadingInstance) {
+      userStore.loadingInstance.close()
     }
-  },
-  components: {
-    Aside,
-    HistoryComponent,
-    Screenfull,
-    Search,
-    BottomInfo,
-    CustomPic
-  },
-  methods: {
-    ...mapActions('user', ['LoginOut']),
-    totalCollapse() {
-      this.isCollapse = !this.isCollapse
-      this.isSider = !this.isCollapse
-      this.isShadowBg = !this.isCollapse
-      this.$bus.emit('collapse', this.isCollapse)
-    },
-    toPerson() {
-      this.$router.push({ name: 'person' })
-    },
-    changeShadow() {
-      this.isShadowBg = !this.isShadowBg
-      this.isSider = !!this.isCollapse
-      this.totalCollapse()
-    },
-  },
-  computed: {
-    ...mapGetters('user', ['userInfo']),
-    title() {
-      return this.$route.meta.title || '当前页面'
-    },
-    matched() {
-      return this.$route.matched
+  })
+
+  const userStore = useUserStore()
+
+  const reloadFlag = ref(true)
+  let reloadTimer = null
+  const reload = async () => {
+    if (reloadTimer) {
+      window.clearTimeout(reloadTimer)
     }
-  },
-  mounted() {
-    let screenWidth = document.body.clientWidth
-    if (screenWidth < 1000) {
-      this.isMobile = true
-      this.isSider = false
-      this.isCollapse = true
-    } else if (screenWidth >= 1000 && screenWidth < 1200) {
-      this.isMobile = false
-      this.isSider = false
-      this.isCollapse = true
-    } else {
-      this.isMobile = false
-      this.isSider = true
-      this.isCollapse = false
-    }
-    this.$bus.emit('collapse', this.isCollapse)
-    this.$bus.emit('mobile', this.isMobile)
-    this.$bus.on("showLoading",()=>{
-      this.loadingFlag = true
-    })
-    this.$bus.on("closeLoading",()=>{
-      this.loadingFlag = false
-    })
-    window.onresize = () => {
-      return (() => {
-        let screenWidth = document.body.clientWidth
-        if (screenWidth < 1000) {
-          this.isMobile = true
-          this.isSider = false
-          this.isCollapse = true
-        } else if (screenWidth >= 1000 && screenWidth < 1200) {
-          this.isMobile = false
-          this.isSider = false
-          this.isCollapse = true
-        } else {
-          this.isMobile = false
-          this.isSider = true
-          this.isCollapse = false
-        }
-        this.$bus.emit('collapse', this.isCollapse)
-        this.$bus.emit('mobile', this.isMobile)
-      })()
-    }
+    reloadTimer = window.setTimeout(async () => {
+      if (route.meta.keepAlive) {
+        reloadFlag.value = false
+        await nextTick()
+        reloadFlag.value = true
+      } else {
+        const title = route.meta.title
+        router.push({ name: 'Reload', params: { title } })
+      }
+    }, 400)
   }
-}
 </script>
-<style lang="scss">
-@import '@/style/mobile.scss';
 
-// $headerHigh: 52px;
-// $mainHight: 100vh;
-// .dropdown-group {
-//   min-width: 100px;
-// }
-// .topfix {
-//   position: fixed;
-//   top: 0;
-//   box-sizing: border-box;
-//   z-index: 999;
-// }
-// .admin-box {
-//   min-height: calc(100vh - 240px);
-//   background-color: rgb(255, 255, 255);
-//   margin-top: 100px;
-// }
-// .el-scrollbar__wrap {
-//   padding-bottom: 17px;
-// }
-// .layout-cont {
-//   .right-box {
-//     text-align: center;
-//     vertical-align: middle;
-//     img {
-//       vertical-align: middle;
-//       border: 1px solid #ccc;
-//       border-radius: 6px;
-//     }
-//   }
-
-//   .header-cont {
-//     height: $headerHigh !important;
-//     background: #fff;
-//     box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
-//     line-height: $headerHigh;
-//   }
-//   .main-cont {
-//     .breadcrumb {
-//       line-height: 48px;
-//       display: inline-block;
-//       padding: 0 24px;
-//       // padding: 6px;
-//       // border-bottom: 1px solid #eee;
-//     }
-
-//     &.el-main {
-//       overflow: auto;
-//       background: #fff;
-//       // padding: 0px 10px;
-//       // background: #fff;
-//     }
-//     height: $mainHight !important;
-//     overflow: visible;
-//     position: relative;
-//     .menu-total {
-//       // z-index: 5;
-//       // position: absolute;
-//       // top: 10px;
-//       // right: -35px;
-//       margin-left: -10px;
-//       float: left;
-//       margin-top: 10px;
-//       width: 30px;
-//       height: 30px;
-//       line-height: 30px;
-//       font-size: 30px;
-//       // border: 0 solid #ffffff;
-//       // border-radius: 50%;
-//       // background: #fff;
-//     }
-//     .aside {
-//       overflow: auto;
-//       // background: #fff;
-//       &::-webkit-scrollbar {
-//         display: none;
-//       }
-//     }
-//     .el-menu-vertical {
-//       height: calc(100vh - 64px) !important;
-//       visibility: auto;
-//       &:not(.el-menu--collapse) {
-//         width: 220px;
-//       }
-//     }
-//     .el-menu--collapse {
-//       width: 54px;
-//       li {
-//         .el-tooltip,
-//         .el-submenu__title {
-//           padding: 0px 15px !important;
-//         }
-//       }
-//     }
-//     &::-webkit-scrollbar {
-//       display: none;
-//     }
-//     &.main-left {
-//       width: auto !important;
-//     }
-//     &.main-right {
-//       .admin-title {
-//         float: left;
-//         font-size: 16px;
-//         vertical-align: middle;
-//         margin-left: 20px;
-//         img {
-//           vertical-align: middle;
-//         }
-//         &.collapse {
-//           width: 53px;
-//         }
-//       }
-//     }
-//   }
-// }
-// .tilte {
-//   background: #001529;
-//   min-height: 64px;
-//   line-height: 64px;
-//   background: #002140;
-//   text-align: center;
-//   .logoimg {
-//     width: 30px;
-//     height: 30px;
-//     vertical-align: middle;
-//     background: #fff;
-//     border-radius: 50%;
-//     padding: 3px;
-//   }
-//   .tit-text {
-//     display: inline-block;
-//     color: #fff;
-//     font-weight: 600;
-//     font-size: 20px;
-//     vertical-align: middle;
-//   }
-// }
-
-
-// .screenfull {
-//   display: inline-block;
-// }
-// .header-avatar{
-// 	display: flex;
-// 	justify-content: center;
-// 	align-items: center;
-// }
-</style>
+<style lang="scss"></style>

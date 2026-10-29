@@ -2,38 +2,48 @@ package core
 
 import (
 	"fmt"
-	"gin-vue-admin/global"
-	"gin-vue-admin/initialize"
-	"go.uber.org/zap"
 	"time"
+
+	"github.com/flipped-aurora/gin-vue-admin/server/global"
+	"github.com/flipped-aurora/gin-vue-admin/server/initialize"
+	mcpTool "github.com/flipped-aurora/gin-vue-admin/server/mcp"
+	"github.com/flipped-aurora/gin-vue-admin/server/service/system"
+	"go.uber.org/zap"
 )
 
-type server interface {
-	ListenAndServe() error
-}
-
-func RunWindowsServer() {
-	if global.GVA_CONFIG.System.UseMultipoint {
-		// 初始化redis服务
+func RunServer() {
+	if global.GVA_CONFIG.System.UseRedis {
 		initialize.Redis()
+		if global.GVA_CONFIG.System.UseMultipoint {
+			initialize.RedisList()
+		}
 	}
-	initialize.InitWkMode()
-	Router := initialize.Routers()
-	Router.Static("/form-generator", "./resource/page")
 
+	if global.GVA_CONFIG.System.UseMongo {
+		if err := initialize.Mongo.Initialization(); err != nil {
+			zap.L().Error(fmt.Sprintf("%+v", err))
+		}
+	}
+
+	if global.GVA_DB != nil {
+		system.LoadAll()
+	}
+
+	Router := initialize.Routers()
 	address := fmt.Sprintf(":%d", global.GVA_CONFIG.System.Addr)
-	s := initServer(address, Router)
-	// 保证文本顺序输出
-	// In order to ensure that the text order output can be deleted
-	time.Sleep(10 * time.Microsecond)
-	global.GVA_LOG.Info("server run success on ", zap.String("address", address))
+	mcpBaseURL := mcpTool.ResolveMCPServiceURL()
 
 	fmt.Printf(`
-	欢迎使用 Gin-Vue-Admin
-	当前版本:V2.3.8
+	欢迎使用 gin-vue-admin
+	当前版本:%s
+	项目地址:https://github.com/flipped-aurora/gin-vue-admin
+	授权版体验:https://vip.gin-vue-admin.com
+	插件市场:https://plugin.gin-vue-admin.com
 	默认自动化文档地址:http://127.0.0.1%s/swagger/index.html
+	MCP 独立服务请手动启动: go run ./cmd/mcp -config ./cmd/mcp/config.yaml
+	默认MCP StreamHTTP地址:%s
 	默认前端文件运行地址:http://127.0.0.1:8080
-	如果项目让您获得了收益，希望您能请团队喝杯可乐:https://www.gin-vue-admin.com/docs/coffee
-`, address)
-	global.GVA_LOG.Error(s.ListenAndServe().Error())
+`, global.Version, address, mcpBaseURL)
+
+	initServer(address, Router, 10*time.Minute, 10*time.Minute)
 }

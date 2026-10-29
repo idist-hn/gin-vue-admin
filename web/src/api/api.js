@@ -1,4 +1,5 @@
 import service from '@/utils/request'
+
 // @Tags api
 // @Summary 分页获取角色列表
 // @Security ApiKeyAuth
@@ -12,13 +13,12 @@ import service from '@/utils/request'
 //	pageSize int
 // }
 export const getApiList = (data) => {
-    return service({
-        url: "/api/getApiList",
-        method: 'post',
-        data
-    })
+  return service({
+    url: '/api/getApiList',
+    method: 'post',
+    data
+  })
 }
-
 
 // @Tags Api
 // @Summary 创建基础api
@@ -29,11 +29,11 @@ export const getApiList = (data) => {
 // @Success 200 {string} json "{"success":true,"data":{},"msg":"获取成功"}"
 // @Router /api/createApi [post]
 export const createApi = (data) => {
-    return service({
-        url: "/api/createApi",
-        method: 'post',
-        data
-    })
+  return service({
+    url: '/api/createApi',
+    method: 'post',
+    data
+  })
 }
 
 // @Tags menu
@@ -45,14 +45,12 @@ export const createApi = (data) => {
 // @Success 200 {string} json "{"success":true,"data":{},"msg":"获取成功"}"
 // @Router /menu/getApiById [post]
 export const getApiById = (data) => {
-    return service({
-        url: "/api/getApiById",
-        method: 'post',
-        data
-    })
+  return service({
+    url: '/api/getApiById',
+    method: 'post',
+    data
+  })
 }
-
-
 
 // @Tags Api
 // @Summary 更新api
@@ -63,11 +61,11 @@ export const getApiById = (data) => {
 // @Success 200 {string} json "{"success":true,"data":{},"msg":"更新成功"}"
 // @Router /api/updateApi [post]
 export const updateApi = (data) => {
-    return service({
-        url: "/api/updateApi",
-        method: 'post',
-        data
-    })
+  return service({
+    url: '/api/updateApi',
+    method: 'post',
+    data
+  })
 }
 
 // @Tags Api
@@ -79,11 +77,11 @@ export const updateApi = (data) => {
 // @Success 200 {string} json "{"success":true,"data":{},"msg":"更新成功"}"
 // @Router /api/setAuthApi [post]
 export const setAuthApi = (data) => {
-    return service({
-        url: "/api/setAuthApi",
-        method: 'post',
-        data
-    })
+  return service({
+    url: '/api/setAuthApi',
+    method: 'post',
+    data
+  })
 }
 
 // @Tags Api
@@ -94,11 +92,11 @@ export const setAuthApi = (data) => {
 // @Success 200 {string} json "{"success":true,"data":{},"msg":"获取成功"}"
 // @Router /api/getAllApis [post]
 export const getAllApis = (data) => {
-    return service({
-        url: "/api/getAllApis",
-        method: 'post',
-        data
-    })
+  return service({
+    url: '/api/getAllApis',
+    method: 'post',
+    data
+  })
 }
 
 // @Tags Api
@@ -107,12 +105,102 @@ export const getAllApis = (data) => {
 // @accept application/json
 // @Produce application/json
 // @Param data body dbModel.Api true "删除api"
-// @Success 200 {string} json "{"success":true,"data":{},"msg":"获取成功"}"
+// @Success 200 {string} json "{"success":true,"data":{},"msg":"删除成功"}"
 // @Router /api/deleteApi [post]
 export const deleteApi = (data) => {
-    return service({
-        url: "/api/deleteApi",
-        method: 'post',
-        data
-    })
+  return service({
+    url: '/api/deleteApi',
+    method: 'post',
+    data
+  })
+}
+
+// @Tags SysApi
+// @Summary 删除选中Api
+// @Security ApiKeyAuth
+// @accept application/json
+// @Produce application/json
+// @Param data body request.IdsReq true "ID"
+// @Success 200 {string} string "{"success":true,"data":{},"msg":"删除成功"}"
+// @Router /api/deleteApisByIds [delete]
+export const deleteApisByIds = (data) => {
+  return service({
+    url: '/api/deleteApisByIds',
+    method: 'delete',
+    data
+  })
+}
+
+// FreshCasbin
+// @Tags      SysApi
+// @Summary   刷新casbin缓存
+// @accept    application/json
+// @Produce   application/json
+// @Success   200   {object}  response.Response{msg=string}  "刷新成功"
+// @Router    /api/freshCasbin [get]
+export const freshCasbin = () => {
+  return service({
+    url: '/api/freshCasbin',
+    method: 'get'
+  })
+}
+
+export const syncApi = () => {
+  return service({
+    url: '/api/syncApi',
+    method: 'get'
+  })
+}
+
+export const getApiGroups = () => {
+  return service({
+    url: '/api/getApiGroups',
+    method: 'get'
+  })
+}
+
+export const ignoreApi = (data) => {
+  return service({
+    url: '/api/ignoreApi',
+    method: 'post',
+    data
+  })
+}
+
+export const enterSyncApi = (data) => {
+  return service({
+    url: '/api/enterSyncApi',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 获取拥有指定API权限的角色ID列表
+ * @param {string} path API路径
+ * @param {string} method 请求方法
+ * @returns {Promise<number[]>} 角色ID数组
+ */
+export const getApiRoles = (path, method) => {
+  return service({
+    url: '/api/getApiRoles',
+    method: 'get',
+    params: { path, method }
+  })
+}
+
+/**
+ * 全量覆盖某API关联的角色列表
+ * @param {Object} data
+ * @param {string} data.path API路径
+ * @param {string} data.method 请求方法
+ * @param {number[]} data.authorityIds 角色ID列表
+ * @returns {Promise}
+ */
+export const setApiRoles = (data) => {
+  return service({
+    url: '/api/setApiRoles',
+    method: 'post',
+    data
+  })
 }

@@ -1,102 +1,36 @@
 package core
 
 import (
-	"fmt"
-	"gin-vue-admin/global"
-	"gin-vue-admin/utils"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
-	"os"
-	"time"
+    "fmt"
+    "github.com/flipped-aurora/gin-vue-admin/server/core/internal"
+    "github.com/flipped-aurora/gin-vue-admin/server/global"
+    "github.com/flipped-aurora/gin-vue-admin/server/utils"
+    "go.uber.org/zap"
+    "go.uber.org/zap/zapcore"
+    "os"
 )
 
-var level zapcore.Level
-
+// Zap 获取 zap.Logger
+// Author [SliverHorn](https://github.com/SliverHorn)
 func Zap() (logger *zap.Logger) {
 	if ok, _ := utils.PathExists(global.GVA_CONFIG.Zap.Director); !ok { // 判断是否有Director文件夹
 		fmt.Printf("create %v directory\n", global.GVA_CONFIG.Zap.Director)
 		_ = os.Mkdir(global.GVA_CONFIG.Zap.Director, os.ModePerm)
 	}
-
-	switch global.GVA_CONFIG.Zap.Level { // 初始化配置文件的Level
-	case "debug":
-		level = zap.DebugLevel
-	case "info":
-		level = zap.InfoLevel
-	case "warn":
-		level = zap.WarnLevel
-	case "error":
-		level = zap.ErrorLevel
-	case "dpanic":
-		level = zap.DPanicLevel
-	case "panic":
-		level = zap.PanicLevel
-	case "fatal":
-		level = zap.FatalLevel
-	default:
-		level = zap.InfoLevel
+	levels := global.GVA_CONFIG.Zap.Levels()
+	length := len(levels)
+	cores := make([]zapcore.Core, 0, length)
+	for i := 0; i < length; i++ {
+		core := internal.NewZapCore(levels[i])
+		cores = append(cores, core)
 	}
-
-	if level == zap.DebugLevel || level == zap.ErrorLevel {
-		logger = zap.New(getEncoderCore(), zap.AddStacktrace(level))
-	} else {
-		logger = zap.New(getEncoderCore())
-	}
+    // 构建基础 logger（错误级别的入库逻辑已在自定义 ZapCore 中处理）
+    logger = zap.New(zapcore.NewTee(cores...))
+	// 启用 Error 及以上级别的堆栈捕捉，确保 entry.Stack 可用
+	opts := []zap.Option{zap.AddStacktrace(zapcore.ErrorLevel)}
 	if global.GVA_CONFIG.Zap.ShowLine {
-		logger = logger.WithOptions(zap.AddCaller())
+		opts = append(opts, zap.AddCaller())
 	}
+	logger = logger.WithOptions(opts...)
 	return logger
-}
-
-// getEncoderConfig 获取zapcore.EncoderConfig
-func getEncoderConfig() (config zapcore.EncoderConfig) {
-	config = zapcore.EncoderConfig{
-		MessageKey:     "message",
-		LevelKey:       "level",
-		TimeKey:        "time",
-		NameKey:        "logger",
-		CallerKey:      "caller",
-		StacktraceKey:  global.GVA_CONFIG.Zap.StacktraceKey,
-		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    zapcore.LowercaseLevelEncoder,
-		EncodeTime:     CustomTimeEncoder,
-		EncodeDuration: zapcore.SecondsDurationEncoder,
-		EncodeCaller:   zapcore.FullCallerEncoder,
-	}
-	switch {
-	case global.GVA_CONFIG.Zap.EncodeLevel == "LowercaseLevelEncoder": // 小写编码器(默认)
-		config.EncodeLevel = zapcore.LowercaseLevelEncoder
-	case global.GVA_CONFIG.Zap.EncodeLevel == "LowercaseColorLevelEncoder": // 小写编码器带颜色
-		config.EncodeLevel = zapcore.LowercaseColorLevelEncoder
-	case global.GVA_CONFIG.Zap.EncodeLevel == "CapitalLevelEncoder": // 大写编码器
-		config.EncodeLevel = zapcore.CapitalLevelEncoder
-	case global.GVA_CONFIG.Zap.EncodeLevel == "CapitalColorLevelEncoder": // 大写编码器带颜色
-		config.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	default:
-		config.EncodeLevel = zapcore.LowercaseLevelEncoder
-	}
-	return config
-}
-
-// getEncoder 获取zapcore.Encoder
-func getEncoder() zapcore.Encoder {
-	if global.GVA_CONFIG.Zap.Format == "json" {
-		return zapcore.NewJSONEncoder(getEncoderConfig())
-	}
-	return zapcore.NewConsoleEncoder(getEncoderConfig())
-}
-
-// getEncoderCore 获取Encoder的zapcore.Core
-func getEncoderCore() (core zapcore.Core) {
-	writer, err := utils.GetWriteSyncer() // 使用file-rotatelogs进行日志分割
-	if err != nil {
-		fmt.Printf("Get Write Syncer Failed err:%v", err.Error())
-		return
-	}
-	return zapcore.NewCore(getEncoder(), writer, level)
-}
-
-// 自定义日志输出时间格式
-func CustomTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	enc.AppendString(t.Format(global.GVA_CONFIG.Zap.Prefix + "2006/01/02 - 15:04:05.000"))
 }

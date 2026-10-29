@@ -1,121 +1,87 @@
 package initialize
 
 import (
-	"gin-vue-admin/global"
-	"gin-vue-admin/initialize/internal"
-	"gin-vue-admin/model"
-	"go.uber.org/zap"
-	"gorm.io/driver/mysql"
-	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 	"os"
-)
 
-//@author: SliverHorn
-//@function: Gorm
-//@description: 初始化数据库并产生数据库全局变量
-//@return: *gorm.DB
+	"github.com/flipped-aurora/gin-vue-admin/server/global"
+	"github.com/flipped-aurora/gin-vue-admin/server/model/example"
+	"github.com/flipped-aurora/gin-vue-admin/server/model/system"
+
+	"go.uber.org/zap"
+	"gorm.io/gorm"
+)
 
 func Gorm() *gorm.DB {
 	switch global.GVA_CONFIG.System.DbType {
 	case "mysql":
+		global.GVA_ACTIVE_DBNAME = &global.GVA_CONFIG.Mysql.Dbname
 		return GormMysql()
+	case "pgsql":
+		global.GVA_ACTIVE_DBNAME = &global.GVA_CONFIG.Pgsql.Dbname
+		return GormPgSql()
+	case "oracle":
+		global.GVA_ACTIVE_DBNAME = &global.GVA_CONFIG.Oracle.Dbname
+		return GormOracle()
+	case "mssql":
+		global.GVA_ACTIVE_DBNAME = &global.GVA_CONFIG.Mssql.Dbname
+		return GormMssql()
+	case "sqlite":
+		global.GVA_ACTIVE_DBNAME = &global.GVA_CONFIG.Sqlite.Dbname
+		return GormSqlite()
 	default:
+		global.GVA_ACTIVE_DBNAME = &global.GVA_CONFIG.Mysql.Dbname
 		return GormMysql()
 	}
 }
 
-// MysqlTables
-//@author: SliverHorn
-//@function: MysqlTables
-//@description: 注册数据库表专用
-//@param: db *gorm.DB
+func RegisterTables() {
+	if global.GVA_CONFIG.System.DisableAutoMigrate {
+		global.GVA_LOG.Info("auto-migrate is disabled, skipping table registration")
+		return
+	}
 
-func MysqlTables(db *gorm.DB) {
+	db := global.GVA_DB
 	err := db.AutoMigrate(
-		model.SysUser{},
-		model.SysAuthority{},
-		model.SysApi{},
-		model.SysBaseMenu{},
-		model.SysBaseMenuParameter{},
-		model.JwtBlacklist{},
-		model.SysDictionary{},
-		model.SysDictionaryDetail{},
-		model.ExaFileUploadAndDownload{},
-		model.ExaFile{},
-		model.ExaFileChunk{},
-		model.ExaSimpleUploader{},
-		model.ExaCustomer{},
-		model.SysOperationRecord{},
-		model.WorkflowProcess{},
-		model.WorkflowNode{},
-		model.WorkflowEdge{},
-		model.WorkflowStartPoint{},
-		model.WorkflowEndPoint{},
-		model.WorkflowMove{},
-		model.ExaWfLeave{},
+
+		system.SysApi{},
+		system.SysIgnoreApi{},
+		system.SysUser{},
+		system.SysBaseMenu{},
+		system.JwtBlacklist{},
+		system.SysAuthority{},
+		system.SysDictionary{},
+		system.SysOperationRecord{},
+		system.SysAutoCodeHistory{},
+		system.SysDictionaryDetail{},
+		system.SysBaseMenuParameter{},
+		system.SysBaseMenuBtn{},
+		system.SysAuthorityBtn{},
+		system.SysAutoCodePackage{},
+		system.SysExportTemplate{},
+		system.Condition{},
+		system.JoinTemplate{},
+		system.SysParams{},
+		system.SysVersion{},
+		system.SysError{},
+		system.SysApiToken{},
+		system.SysLoginLog{},
+
+		example.ExaFile{},
+		example.ExaCustomer{},
+		example.ExaFileChunk{},
+		example.ExaFileUploadAndDownload{},
+		example.ExaAttachmentCategory{},
 	)
 	if err != nil {
-		global.GVA_LOG.Error("register table failed", zap.Any("err", err))
-		os.Exit(0)
+		global.GVA_LOG.Error("register table failed", zap.Error(err))
+		os.Exit(1)
+	}
+
+	err = bizModel()
+
+	if err != nil {
+		global.GVA_LOG.Error("register biz_table failed", zap.Error(err))
+		os.Exit(1)
 	}
 	global.GVA_LOG.Info("register table success")
-}
-
-//
-//@author: SliverHorn
-//@function: GormMysql
-//@description: 初始化Mysql数据库
-//@return: *gorm.DB
-
-func GormMysql() *gorm.DB {
-	m := global.GVA_CONFIG.Mysql
-	dsn := m.Username + ":" + m.Password + "@tcp(" + m.Path + ")/" + m.Dbname + "?" + m.Config
-	mysqlConfig := mysql.Config{
-		DSN:                       dsn,   // DSN data source name
-		DefaultStringSize:         191,   // string 类型字段的默认长度
-		DisableDatetimePrecision:  true,  // 禁用 datetime 精度，MySQL 5.6 之前的数据库不支持
-		DontSupportRenameIndex:    true,  // 重命名索引时采用删除并新建的方式，MySQL 5.7 之前的数据库和 MariaDB 不支持重命名索引
-		DontSupportRenameColumn:   true,  // 用 `change` 重命名列，MySQL 8 之前的数据库和 MariaDB 不支持重命名列
-		SkipInitializeWithVersion: false, // 根据版本自动配置
-	}
-	if db, err := gorm.Open(mysql.New(mysqlConfig), gormConfig(m.LogMode)); err != nil {
-		global.GVA_LOG.Error("MySQL启动异常", zap.Any("err", err))
-		os.Exit(0)
-		return nil
-	} else {
-		sqlDB, _ := db.DB()
-		sqlDB.SetMaxIdleConns(m.MaxIdleConns)
-		sqlDB.SetMaxOpenConns(m.MaxOpenConns)
-		return db
-	}
-}
-
-//@author: SliverHorn
-//@function: gormConfig
-//@description: 根据配置决定是否开启日志
-//@param: mod bool
-//@return: *gorm.Config
-
-func gormConfig(mod bool) *gorm.Config {
-	var config = &gorm.Config{DisableForeignKeyConstraintWhenMigrating: true}
-	switch global.GVA_CONFIG.Mysql.LogZap {
-	case "silent", "Silent":
-		config.Logger = internal.Default.LogMode(logger.Silent)
-	case "error", "Error":
-		config.Logger = internal.Default.LogMode(logger.Error)
-	case "warn", "Warn":
-		config.Logger = internal.Default.LogMode(logger.Warn)
-	case "info", "Info":
-		config.Logger = internal.Default.LogMode(logger.Info)
-	case "zap", "Zap":
-		config.Logger = internal.Default.LogMode(logger.Info)
-	default:
-		if mod {
-			config.Logger = internal.Default.LogMode(logger.Info)
-			break
-		}
-		config.Logger = internal.Default.LogMode(logger.Silent)
-	}
-	return config
 }
